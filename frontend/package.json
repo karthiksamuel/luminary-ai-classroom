@@ -30,7 +30,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "@webspatial/builder": "^1.2.0",
     "@webspatial/platform-visionos": "^1.2.0",
-    "@webspatial/vite-plugin": "^1.2.0",
+    "@webspatial/vite-plugin": "^1.0.1",
     "dotenv-cli": "^8.0.0",
     "eslint": "^9.0.0",
     "tailwindcss": "^4.0.0",
