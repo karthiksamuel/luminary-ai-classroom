@@ -13,7 +13,7 @@ declare global {
 
 export default function SpatialClassroom({ children, sidebarContent }: SpatialClassroomProps) {
   const isSpatial = import.meta.env.XR_ENV === 'avp'
-  const sessionRef = useRef<{ destroy?: () => void } | null>(null)
+  const sessionRef = useRef<any>(null) // ai fix: avoid importing SpatialSession type directly to prevent loading SDK in non-spatial contexts
 
   // Lazy-init SpatialSession only in WebSpatial context
   useEffect(() => {

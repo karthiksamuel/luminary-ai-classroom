@@ -2,8 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import webSpatial from '@webspatial/vite-plugin'
-import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
+
+const isSpatial = process.env.XR_ENV === 'avp'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -13,40 +14,14 @@ export default defineConfig({
     },
   },
   plugins: [
-    webSpatial(),
+    // Only apply WebSpatial plugin when building for visionOS (XR_ENV=avp).
+    // Without this guard the plugin redirects localhost → /webspatial/avp/ in normal dev.
+    isSpatial && webSpatial(),
     react({
       jsxImportSource: '@webspatial/react-sdk',
     }),
     tailwindcss(),
-    VitePWA({
-      manifest: {
-        name: 'Luminary',
-        short_name: 'Luminary',
-        description: 'A private AI teacher, for any subject, for any student, anywhere in the world.',
-        start_url: '/',
-        scope: '/',
-        display: 'minimal-ui',
-        background_color: '#0d0d1a',
-        theme_color: '#1a0a2e',
-        icons: [
-          {
-            src: '/icons/icon-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any',
-          },
-          {
-            src: '/icons/icon-1024-maskable.png',
-            sizes: '1024x1024',
-            type: 'image/png',
-            purpose: 'maskable',
-          },
-        ],
-      },
-      injectRegister: false,
-      devOptions: {
-        enabled: true,
-      },
-    }),
+    // PWA manifest is served as a static file from public/manifest.webmanifest
+    // so that webspatial-builder can find it at its default path.
   ],
 })
