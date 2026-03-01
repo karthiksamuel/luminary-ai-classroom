@@ -1,37 +1,29 @@
 @import "tailwindcss";
 
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-html, body, #root {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+:root {
+  font-family:
+    "SF Pro Display",
+    "SF Pro Text",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  color: #f8fafc;
+  background: radial-gradient(circle at top, rgba(33, 85, 125, 0.45), transparent 46%),
+    linear-gradient(180deg, #03111f 0%, #061a2d 54%, #08131d 100%);
 }
 
-/* Placeholder input text color */
-input::placeholder {
-  color: rgba(255, 255, 255, 0.35);
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 4px;
-}
+html, body, #root { width: 100%; height: 100%; }
 
-::-webkit-scrollbar-track {
+/* Spatial mode — transparent background for visionOS */
+html.is-spatial {
   background: transparent;
+  --xr-background-material: translucent;
 }
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
-}
+html.is-spatial body,
+html.is-spatial #root { background: transparent; }

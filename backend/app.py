@@ -153,8 +153,12 @@ def render_manim():
     if not result.get("success") or not result.get("videoUrl"):
         return jsonify({"error": "Render failed", "detail": result}), 500
 
+    video_url = result["videoUrl"]
+    if not video_url.startswith("http"):
+        video_url = MANIM_API_URL.rstrip("/") + "/" + video_url.lstrip("/")
+
     try:
-        video_bytes = requests.get(result["videoUrl"], timeout=60).content
+        video_bytes = requests.get(video_url, timeout=60).content
     except Exception as e:
         return jsonify({"error": str(e)}), 502
 
@@ -197,13 +201,22 @@ def synthesize_voice():
 # ── Student response ───────────────────────────────────────────────────────
 
 RESPONSE_SYSTEM = """
-You are a warm, encouraging AI teacher mid-lesson. A student has just spoken.
-Classify their input and respond. Return ONLY valid JSON:
+You are a warm, expert AI teacher mid-lesson. A student has just spoken to you.
+Respond as a real teacher would: thoroughly, clearly, and with genuine enthusiasm.
+Return ONLY valid JSON — no markdown, no code fences:
+
 {
   "inputType": "question" | "confusion" | "acknowledgment",
-  "spokenText": "Your 2-3 sentence response. Warm, clear, encouraging.",
-  "boardUpdate": "Optional short chalk note ≤8 words. Omit key if not helpful."
+  "spokenText": "Your spoken response. For questions and confusion, give a real explanation — 4-6 sentences minimum. Break the concept down step by step. Use analogies. Make it click. For acknowledgments, give brief warm encouragement (1-2 sentences).",
+  "boardUpdate": "A short but meaningful chalk note that captures the core idea you just explained — max 10 words. ALWAYS include this field."
 }
+
+Rules:
+- inputType "question": The student asked about something. Explain it fully and clearly, as if this is the most important thing they could learn right now. Don't just restate the question — actually teach it.
+- inputType "confusion": The student is lost. Simplify. Use a concrete real-world analogy. Re-explain from first principles.
+- inputType "acknowledgment": The student understood or agreed. Keep it brief and move on warmly.
+- boardUpdate MUST always be present. Make it a genuinely useful summary (e.g. "slope = rate of change", "F = ma → force causes acceleration").
+- spokenText must be conversational, never bullet points. Write as you would actually speak.
 """
 
 
@@ -217,7 +230,15 @@ def student_response():
     if not transcript:
         return jsonify({"error": "transcript is required"}), 400
 
-    prompt = f"Subject: {subject}\nTopic: {topic}\nSegment: {current_segment}\nStudent said: \"{transcript}\""
+    prompt = (
+        f"Subject: {subject}\n"
+        f"Topic: {topic}\n"
+        f"Current lesson segment: {current_segment} of 5\n"
+        f"Student said: \"{transcript}\"\n\n"
+        f"Respond as the teacher. If the student is asking about something related to {topic}, "
+        f"give a thorough explanation. If they ask about something else entirely, briefly address it "
+        f"and gently redirect back to {topic}."
+    )
     try:
         response = client.models.generate_content(
             model=GEMINI_MODEL, contents=prompt,
@@ -231,7 +252,11 @@ def student_response():
         return jsonify(json.loads(raw))
     except Exception as e:
         print(f"[student-response] {e}")
-        return jsonify({"inputType": "question", "spokenText": f"Great question! Let me address that in the context of {topic}. Let's continue exploring this together."})
+        return jsonify({
+            "inputType": "question",
+            "spokenText": f"That's a great question about {topic}. The core idea here is that every concept builds on what came before — let's keep working through it together and I'll make sure it clicks.",
+            "boardUpdate": f"Keep going — {topic}",
+        })
 
 
 @app.route("/health", methods=["GET"])

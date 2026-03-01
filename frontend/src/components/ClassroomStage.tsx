@@ -1,17 +1,31 @@
-import type { RenderedSegment, LessonStatus } from '@/types/lesson'
+import type { RenderedSegment, LessonStatus, BoardAction, AvatarPosition } from '@/types/lesson'
 import TeacherAvatar from './TeacherAvatar'
 import Chalkboard from './Chalkboard'
+
+interface TeacherOverride {
+  boardText: string
+  boardAction: BoardAction
+  avatarPosition: AvatarPosition
+}
 
 interface ClassroomStageProps {
   currentSegment: RenderedSegment | null
   status: LessonStatus
   isSpeaking: boolean
   onSegmentEnd: () => void
+  // Active during teacher→student responses; overrides board + avatar
+  teacherOverride?: TeacherOverride | null
 }
 
-export default function ClassroomStage({ currentSegment, status, isSpeaking }: ClassroomStageProps) {
+export default function ClassroomStage({ currentSegment, status, isSpeaking, teacherOverride }: ClassroomStageProps) {
   const isLoading = status === 'generating' || status === 'pre-rendering'
   const isComplete = status === 'complete'
+
+  // Override takes priority when teacher is actively responding to a question
+  const boardAction = teacherOverride?.boardAction ?? currentSegment?.boardAction ?? 'write'
+  const boardText = teacherOverride?.boardText ?? currentSegment?.boardText
+  const videoUrl = teacherOverride ? undefined : currentSegment?.videoUrl
+  const avatarPosition = teacherOverride?.avatarPosition ?? currentSegment?.avatarPosition ?? 'center'
 
   return (
     <div
@@ -49,7 +63,7 @@ export default function ClassroomStage({ currentSegment, status, isSpeaking }: C
         background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)',
       }} />
 
-      {/* Chalkboard area (upper portion) */}
+      {/* Chalkboard — driven by lesson segment or teacher override during Q&A */}
       <div style={{
         position: 'absolute',
         top: '8%',
@@ -57,24 +71,19 @@ export default function ClassroomStage({ currentSegment, status, isSpeaking }: C
         right: '10%',
         height: '48%',
       }}>
-        {currentSegment && (
+        {(currentSegment || teacherOverride) ? (
           <Chalkboard
-            boardAction={currentSegment.boardAction}
-            boardText={currentSegment.boardText}
-            videoUrl={currentSegment.videoUrl}
-            isActive={status === 'playing'}
+            boardAction={boardAction}
+            boardText={boardText}
+            videoUrl={videoUrl}
+            isActive={status === 'playing' || !!teacherOverride}
           />
-        )}
-        {!currentSegment && !isLoading && (
-          <Chalkboard
-            boardAction="write"
-            boardText="luminary"
-            isActive={false}
-          />
+        ) : !isLoading && (
+          <Chalkboard boardAction="write" boardText="luminary" isActive={false} />
         )}
       </div>
 
-      {/* Stage floor area (bottom portion) — teacher avatar lives here */}
+      {/* Stage floor — 2D avatar (replaced by 3D WebSpatial Volume in visionOS) */}
       <div style={{
         position: 'absolute',
         bottom: '15%',
@@ -82,13 +91,9 @@ export default function ClassroomStage({ currentSegment, status, isSpeaking }: C
         right: 0,
         height: '45%',
       }}>
-        {currentSegment && (
-          <TeacherAvatar
-            position={currentSegment.avatarPosition}
-            isSpeaking={isSpeaking}
-          />
-        )}
-        {!currentSegment && !isLoading && (
+        {(currentSegment || teacherOverride) ? (
+          <TeacherAvatar position={avatarPosition} isSpeaking={isSpeaking} />
+        ) : !isLoading && (
           <TeacherAvatar position="center" isSpeaking={false} />
         )}
       </div>

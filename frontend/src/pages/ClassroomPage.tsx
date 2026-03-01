@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useState, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useLesson } from '@/hooks/useLesson'
 import { useAudioPlayer } from '@/hooks/useAudioPlayer'
@@ -6,7 +6,13 @@ import { respondToStudent, synthesizeVoice, createObjectUrl } from '@/lib/api'
 import ClassroomStage from '@/components/ClassroomStage'
 import Sidebar from '@/components/Sidebar'
 import SpatialClassroom from '@/components/spatial/SpatialClassroom'
-import type { Subject } from '@/types/lesson'
+import type { Subject, BoardAction, AvatarPosition } from '@/types/lesson'
+
+export interface TeacherOverride {
+  boardText: string
+  boardAction: BoardAction
+  avatarPosition: AvatarPosition
+}
 
 export default function ClassroomPage() {
   const [searchParams] = useSearchParams()
@@ -21,11 +27,22 @@ export default function ClassroomPage() {
 
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
+  const [teacherOverride, setTeacherOverride] = useState<TeacherOverride | null>(null)
+  // Track whether currently-playing audio is a teacher response (vs lesson segment)
+  const isResponseAudioRef = useRef(false)
 
   const onAudioEnd = useCallback(() => {
     setIsSpeaking(false)
-    setTimeout(() => nextSegment(), 800)
-  }, [nextSegment])
+    if (isResponseAudioRef.current) {
+      // Teacher finished responding to student — clear override and resume lesson
+      isResponseAudioRef.current = false
+      setTeacherOverride(null)
+      setTimeout(() => play(), 600)
+    } else {
+      // Normal lesson segment finished — advance
+      setTimeout(() => nextSegment(), 800)
+    }
+  }, [nextSegment, play])
 
   const { play: playAudio, stop: stopAudio } = useAudioPlayer({
     onPlay: () => setIsSpeaking(true),
@@ -61,10 +78,24 @@ export default function ClassroomPage() {
     setIsSpeaking(false)
     try {
       const response = await respondToStudent(transcript, currentSegmentIndex, lesson.subject, lesson.topic)
+
+      // Update the board with what the teacher is about to explain
+      if (response.boardUpdate) {
+        setTeacherOverride({
+          boardText: response.boardUpdate,
+          boardAction: 'write',
+          avatarPosition: 'board',
+        })
+      }
+
       const audioBlob = await synthesizeVoice(response.spokenText)
+      // Mark this audio as a response — onAudioEnd will clear override and resume
+      isResponseAudioRef.current = true
       playAudio(createObjectUrl(audioBlob))
-      setTimeout(() => { setIsResponding(false); play() }, 1500)
+      setIsResponding(false)
     } catch {
+      isResponseAudioRef.current = false
+      setTeacherOverride(null)
       setIsResponding(false)
       play()
     }
@@ -168,6 +199,7 @@ export default function ClassroomPage() {
             status={status}
             isSpeaking={isSpeaking}
             onSegmentEnd={nextSegment}
+            teacherOverride={teacherOverride}
           />
         </SpatialClassroom>
       </div>
