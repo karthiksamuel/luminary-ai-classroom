@@ -8,8 +8,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { initScene } from '@webspatial/react-sdk'
 import { gsap } from 'gsap'
 import type { LessonInfo, CompletedTopic, ChatMessage } from '@/App'
-import TeacherPanel from './TeacherPanel'
-import SpaceTeacherPanel from './SpaceTeacherPanel'
+import TeacherPanelTabs from './TeacherPanelTabs'
 import BoardPanel from './BoardPanel'
 import TopicsPanel from './TopicsPanel'
 import NotesPanel from './NotesPanel'
@@ -567,9 +566,7 @@ export default function ClassroomView({
             {/* Left — Teacher or Chat (25%) */}
             <div style={{ flex: '0 0 25%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               {textMode ? chatPanel : (
-                isSpaceMode
-                  ? <SpaceTeacherPanel isTalking={isTalking} />
-                  : <TeacherPanel isTalking={isTalking} />
+                <TeacherPanelTabs isTalking={isTalking} isSpaceMode={isSpaceMode} />
               )}
             </div>
 

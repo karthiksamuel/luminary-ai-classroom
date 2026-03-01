@@ -37,7 +37,9 @@ export default function LoadingScene({ label, mode = 'fill' }: Props) {
       repeat: -1,
       ease: 'sine.inOut',
     })
-    return () => t.kill()
+    return () => {
+      t.kill()
+    }
   }, [])
 
   // Label breathe
@@ -52,7 +54,9 @@ export default function LoadingScene({ label, mode = 'fill' }: Props) {
       ease: 'sine.inOut',
       delay: 0.4,
     })
-    return () => t.kill()
+    return () => {
+      t.kill()
+    }
   }, [label])
 
   // Brand drift (overlay mode only)

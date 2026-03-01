@@ -3,8 +3,7 @@
 // and drives the 3D teacher avatar accordingly.
 
 import { useState, useEffect } from 'react'
-import TeacherPanel from '@/components/TeacherPanel'
-import SpaceTeacherPanel from '@/components/SpaceTeacherPanel'
+import TeacherPanelTabs from '@/components/TeacherPanelTabs'
 
 export default function TeacherScene() {
   const [isTalking, setIsTalking] = useState(false)
@@ -30,7 +29,7 @@ export default function TeacherScene() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: 'transparent' }}>
-      {isSpaceMode ? <SpaceTeacherPanel isTalking={isTalking} /> : <TeacherPanel isTalking={isTalking} />}
+      <TeacherPanelTabs isTalking={isTalking} isSpaceMode={isSpaceMode} />
     </div>
   )
 }
