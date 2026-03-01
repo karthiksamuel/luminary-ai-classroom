@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "run:avp": "dotenv -e .env.local -- sh -c 'webspatial-builder run --base=$XR_DEV_SERVER'",
     "lint": "eslint .",
-    "setup:models": "ln -sf ../../3d-main/public/models public/models 2>/dev/null || true"
+    "setup:models": "ln -sf ../../3d-main/public/models public/models 2>/dev/null || true",
+    "tunnel": "bash ../tunnel.sh",
+    "tunnel:no-manim": "bash ../tunnel.sh --no-manim"
   },
   "dependencies": {
     "@elevenlabs/react": "^0.7.0",
