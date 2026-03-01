@@ -20,6 +20,7 @@
     "@google/model-viewer": "^4.1.0",
     "@webspatial/core-sdk": "https://pkg.pr.new/@webspatial/core-sdk@125e42c",
     "@webspatial/react-sdk": "https://pkg.pr.new/@webspatial/react-sdk@125e42c",
+    "gsap": "3.13.0",
     "lucide-react": "^0.475.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

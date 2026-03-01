@@ -1,0 +1,73 @@
+diff --git a/node_modules/@webspatial/platform-visionos/web-spatial/web_spatialApp.swift b/node_modules/@webspatial/platform-visionos/web-spatial/web_spatialApp.swift
+index 63d7de8..76e2049 100644
+--- a/node_modules/@webspatial/platform-visionos/web-spatial/web_spatialApp.swift
++++ b/node_modules/@webspatial/platform-visionos/web-spatial/web_spatialApp.swift
+@@ -43,18 +43,29 @@ struct web_spatialApp: App {
+     }
+ 
+     func getFileUrl() -> URL {
+-        return URL(string: pwaManager.start_url)!
++        if let url = URL(string: pwaManager.start_url) {
++            return url
++        }
++        return Bundle.main.bundleURL
+     }
+ 
+     func getDefaultSize() -> CGSize {
+         sceneStateChangedCB("")
+-        return wgm.getValue().defaultSize!
++        return wgm.getValue().defaultSize ?? DefaultPlainWindowContainerSize
+     }
+ 
+     var body: some Scene {
+         WindowGroup(id: "Plain", for: WindowContainerData.self) { $windowData in
++            let resolvedWindowData = windowData ?? WindowContainerData(
++                windowStyle: "Plain",
++                windowContainerID: SpatialWindowContainer.getRootID()
++            )
+             let wg = SpatialWindowContainer.getOrCreateSpatialWindowContainer(
+-                windowData.windowContainerID, windowData
++                resolvedWindowData.windowContainerID,
++                resolvedWindowData
++            ) ?? SpatialWindowContainer(
++                resolvedWindowData.windowContainerID,
++                resolvedWindowData
+             )
+             PlainWindowContainerView().environment(wg)
+             // https://stackoverflow.com/questions/78567737/how-to-get-initial-windowgroup-to-reopen-on-launch-visionos
+@@ -70,7 +81,10 @@ struct web_spatialApp: App {
+             let fileUrl = getFileUrl()
+             let wc = SpatialWindowContainer.getOrCreateSpatialWindowContainer(
+                 windowData.windowContainerID, windowData
+-            )!
++            ) ?? SpatialWindowContainer(
++                windowData.windowContainerID,
++                windowData
++            )
+             let rootEntity = SpatialEntity()
+             rootEntity.coordinateSpace = CoordinateSpaceMode.ROOT
+             let windowComponent = SpatialWindowComponent(parentWindowContainerID: wc.id, url: fileUrl)
+@@ -119,11 +133,21 @@ struct web_spatialApp: App {
+         }.defaultSize(
+             getDefaultSize()
+         ).windowResizability(
+-            wgm.getValue().windowResizability!
++            wgm.getValue().windowResizability ?? .automatic
+         )
+ 
+         WindowGroup(id: "Volumetric", for: WindowContainerData.self) { $windowData in
+-            let wg = SpatialWindowContainer.getOrCreateSpatialWindowContainer(windowData!.windowContainerID, windowData!)
++            let resolvedWindowData = windowData ?? WindowContainerData(
++                windowStyle: "Volumetric",
++                windowContainerID: UUID().uuidString
++            )
++            let wg = SpatialWindowContainer.getOrCreateSpatialWindowContainer(
++                resolvedWindowData.windowContainerID,
++                resolvedWindowData
++            ) ?? SpatialWindowContainer(
++                resolvedWindowData.windowContainerID,
++                resolvedWindowData
++            )
+             VolumetricWindowContainerView().environment(wg).handlesExternalEvents(preferring: [], allowing: [])
+ 
+         }.windowStyle(.volumetric).defaultSize(width: 1, height: 1, depth: 1, in: .meters)
