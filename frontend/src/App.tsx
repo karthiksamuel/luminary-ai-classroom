@@ -15,6 +15,12 @@ export interface CompletedTopic {
   videoUrl: string
 }
 
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'ai'
+  text: string
+}
+
 type AppView = 'greeting' | 'classroom'
 
 export default function App() {
@@ -24,6 +30,8 @@ export default function App() {
   const [isRendering, setIsRendering] = useState(false)
   const [completedTopics, setCompletedTopics] = useState<CompletedTopic[]>([])
   const [startError, setStartError] = useState<string | null>(null)
+  const [textMode, setTextMode] = useState(false)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
 
   // Tool: agent calls this when user tells it what they want to learn
   const handleStartLesson = useCallback(
@@ -69,7 +77,25 @@ export default function App() {
     [handleStartLesson, handleRenderAnimation],
   )
 
-  const conversation = useConversation({ clientTools })
+  const conversation = useConversation({
+    clientTools,
+    onMessage: ({ message, source }) => {
+      setMessages((prev) => [
+        ...prev,
+        { id: String(Date.now() + Math.random()), role: source as 'user' | 'ai', text: message },
+      ])
+    },
+  })
+
+  const handleEnterDirectly = useCallback((topic: string, subject: string) => {
+    setLessonInfo({ topic, subject })
+    setView('classroom')
+  }, [])
+
+  const handleSendMessage = useCallback(
+    (text: string) => { conversation.sendUserMessage(text) },
+    [conversation],
+  )
 
   const startConversation = useCallback(async () => {
     setStartError(null)
@@ -100,6 +126,7 @@ export default function App() {
         isSpeaking={conversation.isSpeaking}
         onStart={startConversation}
         onStop={endConversation}
+        onEnterDirectly={handleEnterDirectly}
         error={startError}
       />
     )
@@ -114,6 +141,10 @@ export default function App() {
       completedTopics={completedTopics}
       onSelectTopic={setCurrentVideoUrl}
       conversationStatus={conversation.status}
+      textMode={textMode}
+      onToggleTextMode={() => setTextMode((v) => !v)}
+      messages={messages}
+      onSendMessage={handleSendMessage}
     />
   )
 }

@@ -6,6 +6,7 @@ declare const __XR_ENV_BASE__: string
 interface ImportMetaEnv {
   readonly VITE_BACKEND_URL: string
   readonly VITE_ELEVENLABS_AGENT_ID: string
+  readonly XR_ENV?: string
 }
 
 interface ImportMeta {

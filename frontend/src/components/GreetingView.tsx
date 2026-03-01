@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 
 const HERO_PHRASES = [
@@ -14,14 +14,19 @@ interface Props {
   isSpeaking: boolean
   onStart: () => void
   onStop: () => void
+  onEnterDirectly: (topic: string, subject: string) => void
   error?: string | null
 }
 
-export default function GreetingView({ status, isSpeaking, onStart, onStop, error }: Props) {
+export default function GreetingView({ status, isSpeaking, onStart, onStop, onEnterDirectly, error }: Props) {
   const isConnected = status === 'connected'
   const isConnecting = status === 'connecting'
   const isSpatial = typeof document !== 'undefined'
     && document.documentElement.classList.contains('is-spatial')
+
+  const [showBypass, setShowBypass] = useState(false)
+  const [bypassTopic, setBypassTopic] = useState('')
+  const [bypassSubject, setBypassSubject] = useState('')
 
   const heroRef = useRef<HTMLDivElement | null>(null)
   const sentenceRef = useRef<HTMLDivElement | null>(null)
@@ -338,6 +343,78 @@ export default function GreetingView({ status, isSpeaking, onStart, onStop, erro
         >
           {isConnecting ? 'Connecting…' : isConnected ? 'End session' : 'Start talking'}
         </button>
+
+        {/* Bypass: skip voice agent, type topic/subject directly */}
+        {!isConnected && !isConnecting && (
+          <button
+            onClick={() => setShowBypass((v) => !v)}
+            style={{
+              background: 'none', border: 'none',
+              color: 'rgba(255,255,255,0.25)',
+              fontSize: '11px', cursor: 'pointer',
+              padding: '2px 8px',
+              textDecoration: 'underline',
+              textDecorationColor: 'rgba(255,255,255,0.1)',
+            }}
+          >
+            {showBypass ? 'Cancel' : 'Enter classroom manually'}
+          </button>
+        )}
+
+        {showBypass && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const t = bypassTopic.trim()
+              const s = bypassSubject.trim()
+              if (t && s) onEnterDirectly(t, s)
+            }}
+            style={{
+              display: 'flex', flexDirection: 'column', gap: '8px',
+              padding: '14px', borderRadius: '12px',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              width: '260px',
+            }}
+          >
+            <input
+              placeholder="Topic  (e.g. Pythagorean theorem)"
+              value={bypassTopic}
+              onChange={(e) => setBypassTopic(e.target.value)}
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '7px', padding: '8px 11px',
+                color: 'white', fontSize: '12px', outline: 'none',
+              }}
+            />
+            <input
+              placeholder="Subject  (e.g. Mathematics)"
+              value={bypassSubject}
+              onChange={(e) => setBypassSubject(e.target.value)}
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '7px', padding: '8px 11px',
+                color: 'white', fontSize: '12px', outline: 'none',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!bypassTopic.trim() || !bypassSubject.trim()}
+              style={{
+                padding: '9px', borderRadius: '7px', border: 'none',
+                background: 'rgba(124,58,237,0.65)',
+                color: 'white', fontWeight: 600, fontSize: '12px',
+                cursor: bypassTopic.trim() && bypassSubject.trim() ? 'pointer' : 'default',
+                opacity: bypassTopic.trim() && bypassSubject.trim() ? 1 : 0.35,
+                transition: 'opacity 0.2s',
+              }}
+            >
+              Enter classroom →
+            </button>
+          </form>
+        )}
       </div>
 
       <style>{`

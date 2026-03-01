@@ -65,9 +65,9 @@ export default function TeacherPanel({ isTalking }: Props) {
           <ModelEntity
             key={activeAnim.id}
             model={activeAnim.id}
-            position={{ x: 0, y: 0.18, z: 0 }}
-            rotation={{ x: 0, y: 180, z: 0 }}
-            scale={{ x: 0.28, y: 0.28, z: 0.28 }}
+            position={{ x: 0, y: -0.23, z: 0.1 }}
+            rotation={{ x: 0, y: 30, z: 0 }}
+            scale={{ x: 0.23, y: 0.23, z: 0.23 }}
           />
         </SceneGraph>
       </Reality>

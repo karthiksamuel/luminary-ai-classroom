@@ -1,3 +1,8 @@
 {
-  "start_url": "/"
+  "name": "Luminary",
+  "start_url": "/",
+  "scope": "/",
+  "xr_main_scene": {
+    "default_size": { "width": 920, "height": 700 }
+  }
 }
