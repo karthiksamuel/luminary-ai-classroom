@@ -1,8 +1,8 @@
-// ClassroomView — 3-panel layout: teacher | board | topics
+// ClassroomView — 2-panel layout: teacher/chat | board
 // Shown after the agent calls the start_lesson tool.
 // Teacher panel: 3D avatar driven by isTalking (from ElevenLabs isSpeaking)
 // Board panel: Manim videos triggered by agent's render_animation tool calls
-// Topics panel: history of all rendered animations, clickable to replay
+// NotesBar: wide bottom bar that slides up on session start
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { initScene } from '@webspatial/react-sdk'
@@ -10,12 +10,10 @@ import { gsap } from 'gsap'
 import type { LessonInfo, CompletedTopic, ChatMessage } from '@/App'
 import TeacherPanelTabs from './TeacherPanelTabs'
 import BoardPanel from './BoardPanel'
-import TopicsPanel from './TopicsPanel'
-import NotesPanel from './NotesPanel'
+import NotesBar from './NotesBar'
 
 // true when running inside the WebSpatial / visionOS app shell
 const IS_SPATIAL = import.meta.env.XR_ENV === 'avp'
-type RightTab = 'topics' | 'notes'
 type NoteItem = { id: string; text: string; createdAt: number }
 
 interface Props {
@@ -49,7 +47,6 @@ export default function ClassroomView({
 }: Props) {
   const [draft, setDraft] = useState('')
   const [isBrandHovered, setIsBrandHovered] = useState(false)
-  const [activeRightTab, setActiveRightTab] = useState<RightTab>('topics')
   const [noteDraft, setNoteDraft] = useState('')
   const [notes, setNotes] = useState<NoteItem[]>([])
   const brandRef = useRef<HTMLSpanElement>(null)
@@ -57,9 +54,9 @@ export default function ClassroomView({
   const channelRef = useRef<BroadcastChannel | null>(null)
   const teacherWinRef = useRef<WindowProxy | null>(null)
   const topicsWinRef = useRef<WindowProxy | null>(null)
+  const notesLinkRef = useRef<HTMLAnchorElement>(null)
   const isTalkingRef = useRef(isTalking)
   const isSpaceModeRef = useRef(isSpaceMode)
-  const tabIndicatorRef = useRef<HTMLDivElement>(null)
   // stable ref so the channel listener always has the latest callback
   const onSelectTopicRef = useRef(onSelectTopic)
   useEffect(() => { onSelectTopicRef.current = onSelectTopic }, [onSelectTopic])
@@ -80,6 +77,13 @@ export default function ClassroomView({
       if (e.data?.type === 'teacher-scene-ready') {
         channel.postMessage({ type: 'teacher-state', isTalking: isTalkingRef.current })
         channel.postMessage({ type: 'teacher-mode', isSpaceMode: isSpaceModeRef.current })
+      }
+      if (e.data?.type === 'add-note' && e.data.note) {
+        setNotes((prev) => {
+          // Deduplicate in case the optimistic update in NotesScene already added it
+          if (prev.some((n) => n.id === e.data.note.id)) return prev
+          return [e.data.note, ...prev]
+        })
       }
     })
 
@@ -116,6 +120,15 @@ export default function ClassroomView({
     }))
     openSceneWindow('luminary-topics', '?scene=topics', (win) => { topicsWinRef.current = win })
 
+    // Notes scene — opened via link element (WebSpatial link-element API)
+    initScene('luminary-notes', (cfg) => ({
+      ...cfg,
+      defaultSize: { width: 820, height: 180 },
+    }))
+    window.setTimeout(() => {
+      if (!canceled) notesLinkRef.current?.click()
+    }, 60)
+
     // Ensure teacher scene starts in explicit idle state until speaking events arrive.
     channel.postMessage({ type: 'teacher-state', isTalking: false })
     channel.postMessage({ type: 'teacher-mode', isSpaceMode: isSpaceModeRef.current })
@@ -142,6 +155,12 @@ export default function ClassroomView({
   useEffect(() => {
     channelRef.current?.postMessage({ type: 'topics-state', topics: completedTopics, currentVideoUrl })
   }, [completedTopics, currentVideoUrl])
+
+  // Keep Notes scene in sync with notes state
+  useEffect(() => {
+    if (!IS_SPATIAL) return
+    channelRef.current?.postMessage({ type: 'notes-state', notes })
+  }, [notes])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -206,19 +225,6 @@ export default function ClassroomView({
       gsap.to(brandEl, { x: 0, y: 0, rotation: 0, duration: 0.25, ease: 'sine.out' })
     }
   }, [brandIsActive, isTalking, isBrandHovered])
-
-  // GSAP: slide tab indicator when active tab changes
-  useEffect(() => {
-    const indicator = tabIndicatorRef.current
-    if (!indicator) return
-    const parent = indicator.parentElement
-    if (!parent) return
-    gsap.to(indicator, {
-      x: activeRightTab === 'notes' ? (parent.offsetWidth - 6) / 2 : 0,
-      duration: 0.28,
-      ease: 'power2.inOut',
-    })
-  }, [activeRightTab])
 
   // Animation request panel — reused in both spatial and non-spatial layouts
   const chatPanel = (
@@ -327,80 +333,6 @@ export default function ClassroomView({
             boxShadow: draft.trim() && !isRendering ? '0 0 14px rgba(167,72,255,0.38)' : 'none',
           }}
         >↑</button>
-      </div>
-    </div>
-  )
-
-  const rightTabbedPanel = (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '8px', overflow: 'hidden' }}>
-      {/* Sliding pill tab switcher */}
-      <div style={{
-        position: 'relative',
-        display: 'flex',
-        flexShrink: 0,
-        background: 'rgba(124,58,237,0.08)',
-        borderRadius: '10px',
-        padding: '3px',
-        border: '1px solid rgba(167,72,255,0.14)',
-      }}>
-        {/* Animated pill */}
-        <div ref={tabIndicatorRef} style={{
-          position: 'absolute',
-          top: '3px', bottom: '3px', left: '3px',
-          width: 'calc(50% - 3px)',
-          background: 'linear-gradient(135deg, rgba(167,72,255,0.32), rgba(124,58,237,0.38))',
-          borderRadius: '7px',
-          border: '1px solid rgba(167,72,255,0.28)',
-          boxShadow: '0 0 10px rgba(124,58,237,0.16)',
-          pointerEvents: 'none',
-          willChange: 'transform',
-        }} />
-        <button
-          onClick={() => setActiveRightTab('topics')}
-          style={{
-            position: 'relative', zIndex: 1, flex: 1,
-            padding: '7px 10px', borderRadius: '7px',
-            border: 'none', background: 'none',
-            color: activeRightTab === 'topics' ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.38)',
-            fontSize: '11px', fontWeight: 700,
-            letterSpacing: '0.08em', textTransform: 'uppercase',
-            cursor: 'pointer', transition: 'color 0.22s',
-          }}
-        >
-          Topics
-        </button>
-        <button
-          onClick={() => setActiveRightTab('notes')}
-          style={{
-            position: 'relative', zIndex: 1, flex: 1,
-            padding: '7px 10px', borderRadius: '7px',
-            border: 'none', background: 'none',
-            color: activeRightTab === 'notes' ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.38)',
-            fontSize: '11px', fontWeight: 700,
-            letterSpacing: '0.08em', textTransform: 'uppercase',
-            cursor: 'pointer', transition: 'color 0.22s',
-          }}
-        >
-          Notes
-        </button>
-      </div>
-
-      <div style={{ flex: 1, minHeight: 0 }}>
-        {activeRightTab === 'topics' ? (
-          <TopicsPanel
-            topics={completedTopics}
-            currentVideoUrl={currentVideoUrl}
-            onSelect={onSelectTopic}
-          />
-        ) : (
-          <NotesPanel
-            draft={noteDraft}
-            notes={notes}
-            onDraftChange={setNoteDraft}
-            onAddNote={handleAddNote}
-            isAddDisabled={!noteDraft.trim()}
-          />
-        )}
       </div>
     </div>
   )
@@ -527,41 +459,32 @@ export default function ClassroomView({
           50% { opacity: 1; filter: saturate(1.18); }
           100% { opacity: 0.9; filter: saturate(0.95); }
         }
-        @keyframes rightColBreath {
-          0%, 100% { box-shadow: 0 0 18px rgba(124,58,237,0.04); }
-          50%       { box-shadow: 0 0 28px rgba(124,58,237,0.09), 0 0 0 1px rgba(167,72,255,0.06); }
-        }
         .lm-animate-input::placeholder { color: rgba(239,178,255,0.3); }
         .lm-animate-input:focus { border-color: rgba(167,72,255,0.48); }
-        .lm-right-col { animation: rightColBreath 5s ease-in-out infinite; border-radius: 12px; }
       `}</style>
 
       {/* Body */}
       <div style={{
-        flex: 1, display: 'flex', gap: '10px', padding: '10px', minHeight: 0,
+        flex: 1, display: 'flex', gap: '10px', padding: '10px 10px 0', minHeight: 0,
       }}>
         {IS_SPATIAL ? (
           // Spatial mode: teacher + topics live in their own scenes.
-          // Main scene shows the board + local tabs (topics / notes).
           <>
-            <div style={{ flex: textMode ? '0 0 25%' : '0 0 26%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-              {textMode ? chatPanel : rightTabbedPanel}
-            </div>
-            <div style={{ flex: textMode ? '0 0 50%' : '0 0 48%', minHeight: 0 }}>
+            {textMode && (
+              <div style={{ flex: '0 0 25%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                {chatPanel}
+              </div>
+            )}
+            <div style={{ flex: 1, minHeight: 0 }}>
               <BoardPanel
                 videoUrl={currentVideoUrl}
                 isRendering={isRendering}
                 topic={lessonInfo.topic}
               />
             </div>
-            {textMode && (
-              <div style={{ flex: '0 0 25%', minHeight: 0, overflow: 'hidden' }}>
-                {rightTabbedPanel}
-              </div>
-            )}
           </>
         ) : (
-          // Web / non-spatial mode: classic 3-panel layout with inline panels.
+          // Web mode: teacher/chat left | board right
           <>
             {/* Left — Teacher or Chat (25%) */}
             <div style={{ flex: '0 0 25%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -570,22 +493,39 @@ export default function ClassroomView({
               )}
             </div>
 
-            {/* Middle — Board (50%) */}
-            <div style={{ flex: '0 0 50%', minHeight: 0 }}>
+            {/* Board — fills remaining space */}
+            <div style={{ flex: 1, minHeight: 0 }}>
               <BoardPanel
                 videoUrl={currentVideoUrl}
                 isRendering={isRendering}
                 topic={lessonInfo.topic}
               />
             </div>
-
-            {/* Right — Topics / Notes (25%) */}
-            <div className="lm-right-col" style={{ flex: '0 0 25%', minHeight: 0, overflow: 'hidden' }}>
-              {rightTabbedPanel}
-            </div>
           </>
         )}
       </div>
+
+      {/* Notes bar — slides up from bottom on mount (web only; spatial uses its own scene) */}
+      {!IS_SPATIAL && (
+        <NotesBar
+          draft={noteDraft}
+          notes={notes}
+          onDraftChange={setNoteDraft}
+          onAddNote={handleAddNote}
+          isAddDisabled={!noteDraft.trim()}
+        />
+      )}
+
+      {/* Hidden link element used by WebSpatial to open the notes scene window */}
+      {IS_SPATIAL && (
+        <a
+          ref={notesLinkRef}
+          href="?scene=notes"
+          target="luminary-notes"
+          enable-xr
+          style={{ display: 'none' }}
+        />
+      )}
     </div>
   )
 }
