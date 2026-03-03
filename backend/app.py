@@ -28,7 +28,7 @@ CACHE_DIR = Path(__file__).parent / "cache"
 (CACHE_DIR / "lessons").mkdir(parents=True, exist_ok=True)
 
 client = genai.Client(api_key=GEMINI_API_KEY)
-GEMINI_MODEL = "gemini-2.0-flash-exp"
+GEMINI_MODEL = "gemini-2.5-flash-lite"
 
 
 SUMMARY_SYSTEM = """
