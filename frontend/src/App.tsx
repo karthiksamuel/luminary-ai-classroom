@@ -44,7 +44,7 @@ export default function App() {
   const [isRendering, setIsRendering] = useState(false)
   const [completedTopics, setCompletedTopics] = useState<CompletedTopic[]>([])
   const [startError, setStartError] = useState<string | null>(null)
-  const [textMode, setTextMode] = useState(false)
+  const [textMode, setTextMode] = useState(true)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isSpaceMode, setIsSpaceMode] = useState(false)
 
@@ -145,8 +145,13 @@ export default function App() {
       return
     }
     try {
+      const agentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID
+      if (!agentId) {
+        setStartError('Voice tutor is not configured. Please set VITE_ELEVENLABS_AGENT_ID in the frontend .env file.')
+        return
+      }
       await conversation.startSession({
-        agentId: import.meta.env.VITE_ELEVENLABS_AGENT_ID,
+        agentId,
         connectionType: 'webrtc',
       })
     } catch (e) {
