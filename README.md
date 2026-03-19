@@ -69,17 +69,6 @@ It transforms any topic into an interactive lesson with a **virtual teacher in y
 
 ---
 
-## 📸 Screenshots
-
-(Add images here)
-
----
-
-## 🎥 Demo
-
-(Add video link here)
-
----
 
 ## 👨‍💻 Author
 
